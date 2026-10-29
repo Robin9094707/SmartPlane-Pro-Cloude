@@ -23,7 +23,7 @@ jobs:
       SCHEME: SmartPlanePro
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Select newest Xcode
         run: |
@@ -46,8 +46,8 @@ jobs:
 
       - name: Build (Release, iphoneos, unsigned)
         run: |
-          set -o pipefail
-          xcodebuild \
+          APP="build/Build/Products/Release-iphoneos/SmartPlanePro.app"
+          if ! xcodebuild \
             -project SmartPlanePro.xcodeproj \
             -scheme "$SCHEME" \
             -configuration Release \
@@ -57,8 +57,17 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tee build.log | grep -E "error:|warning:|\*\* BUILD" || true
-          test -d "build/Build/Products/Release-iphoneos/SmartPlanePro.app" || { echo "::error::Build failed"; grep -E "error:" build.log | head -50; exit 1; }
+            build > build.log 2>&1; then
+            echo "::error::xcodebuild failed"
+            grep -E "error:" build.log | sort -u | head -100
+            tail -40 build.log
+            exit 1
+          fi
+          echo "--- Warnings ---"
+          grep -E "warning:" build.log | sort -u | head -100 || true
+          # Xcode creates the bundle folder even for failed builds: verify the binary.
+          test -x "$APP/SmartPlanePro" || { echo "::error::App binary missing"; exit 1; }
+          ls -lh "$APP/SmartPlanePro"
 
       - name: Package IPA
         run: |
@@ -71,7 +80,7 @@ jobs:
           ls -lh "$IPA"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: SmartPlanePro-IPA
           path: ${{ env.IPA }}
@@ -79,7 +88,7 @@ jobs:
 
       - name: Upload build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: build-log
           path: build.log

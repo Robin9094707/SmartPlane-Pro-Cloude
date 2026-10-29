@@ -102,14 +102,12 @@ struct ValueInterpretations {
 extension Int {
     /// Classic five-step signal bars from an RSSI value in dBm.
     var rssiBars: Int {
-        switch self {
-        case 0...: return 0 // 127 = unavailable
-        case -55...: return 4
-        case -67...: return 3
-        case -80...: return 2
-        case -92...: return 1
-        default: return 0
-        }
+        if self >= 0 { return 0 } // 127 = unavailable
+        if self >= -55 { return 4 }
+        if self >= -67 { return 3 }
+        if self >= -80 { return 2 }
+        if self >= -92 { return 1 }
+        return 0
     }
 }
 
